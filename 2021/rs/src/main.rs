@@ -1,67 +1,118 @@
 #![allow(unused)]
-// use std::env;
+use std::env;
 use std::fs;
 
 fn main() {
-    day_one_first("../inputs/01_1.txt");
-    day_one_second("../inputs/01_1.txt");
-}
-
-fn day_one_first(infile: &str) {
-    let input = fs::read_to_string(infile)
-        .expect("Something went wrong reading the file");
-
-    let measurements = input.lines().map(|x| x.parse::<u32>().unwrap());
-
-    let mut last_measurement: Option<u32> = None;
-    let mut num_increases: u32 = 0;
-
-    for measurement in measurements {
-        if let Some(last) = last_measurement {
-            if measurement > last {
-                num_increases += 1;
-            }
-        }
-        last_measurement = Some(measurement);
+    let args: Vec<String> = env::args().collect();
+    match args[1].as_str() {
+        "1" => depth_measurements(),
+        "2" => sub_position(),
+        _ => (),
     }
-    println!("There were {} increases", num_increases);
 }
 
-fn day_one_second(infile: &str) {
+fn read_lines(infile: &str) -> Vec<String> {
     let input = fs::read_to_string(infile)
-        .expect("Something went wrong reading the file");
+        .expect("Something went wrong reading the input file");
+    input.lines().map(String::from).collect()
+}
 
-    let measurements: Vec<u32> = input
-        .lines()
-        .map(|x| x.parse::<u32>().unwrap())
-        .collect();
+// Day one
+fn depth_measurements() {
+    let measurements = read_lines("../inputs/01_1.txt").iter()
+        .map(|x| x.parse::<u32>().unwrap()).collect();
+
+    fn count_increases(measurements: &Vec<u32>) -> u32 {
+        let mut last_measurement: Option<u32> = None;
+        let mut num_increases: u32 = 0;
+
+        for measurement in measurements {
+            if let Some(last) = last_measurement {
+                if *measurement > last {
+                    num_increases += 1;
+                }
+            }
+            last_measurement = Some(*measurement);
+        }
+        num_increases
+    }
+
+    println!("There were {} increases", count_increases(&measurements));
 
     const WINDOW_SIZE: usize = 3;
     let mut windowed_measurements: Vec<u32> = Vec::new();
 
     for i in 0..=measurements.len()-WINDOW_SIZE {
-        //println!("we are in window index {}", i);
 
         let window = &measurements[i..i+WINDOW_SIZE];
         let window_sum = window.iter().sum::<u32>();
-        //println!("sum of window: {}", window_sum);
 
         windowed_measurements.push(window_sum);
     }
 
-    let count = windowed_measurements.len();
-    //println!("there are {} windowed_measurements", count);
+    println!("There were {} windowed increases",
+             count_increases(&windowed_measurements));
+}
 
-    let mut last_measurement: Option<u32> = None;
-    let mut num_increases: u32 = 0;
+// Day two
+fn sub_position() {
+    enum SubMovement {
+        Forward(u32),
+        Down(u32),
+        Up(u32),
+    }
 
-    for measurement in windowed_measurements {
-        if let Some(last) = last_measurement {
-            if measurement > last {
-                num_increases += 1;
+    let movements: Vec<SubMovement> = read_lines("../inputs/02.txt")
+        .iter()
+        .map(|item| {
+            let line: Vec<&str> = item.split_whitespace().collect();
+            let mvt = line[0];
+            let magnitude = line[1].parse::<u32>().unwrap();
+            match mvt as &str {
+                "forward" => SubMovement::Forward(magnitude),
+                "up" => SubMovement::Up(magnitude),
+                "down" => SubMovement::Down(magnitude),
+                _ => unreachable!(),
+            }
+        }).collect();
+
+    struct SubPosition {
+        depth: u32,
+        distance: u32,
+        aim: u32,
+    }
+
+    let mut naive_position = SubPosition {
+        depth: 0,
+        distance: 0,
+        aim: 0,
+    };
+
+    let mut position = SubPosition {
+        depth: 0,
+        distance: 0,
+        aim: 0,
+    };
+
+    for movement in movements {
+        match movement {
+            SubMovement::Forward(mag) => {
+                naive_position.distance += mag;
+                position.distance += mag;
+                position.depth += position.aim * mag;
+            },
+            SubMovement::Up(mag) => {
+                naive_position.depth -= mag;
+                position.aim -= mag;
+            },
+            SubMovement::Down(mag) => {
+                naive_position.depth += mag;
+                position.aim += mag;
             }
         }
-        last_measurement = Some(measurement);
     }
-    println!("There were {} windowed increases", num_increases);
+    println!("The naive position vector product is {}",
+             naive_position.depth * naive_position.distance);
+    println!("The position vector product is {}",
+             position.depth * position.distance);
 }

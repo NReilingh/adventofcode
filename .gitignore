@@ -2,3 +2,7 @@
 2020/rs/target/
 
 2021/rs/target/
+
+.envrc
+
+.DS_Store
