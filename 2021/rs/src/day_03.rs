@@ -1,7 +1,7 @@
 // Day three
 
 pub fn binary_diagnostic(diagnostics: Vec<String>) -> (u32, u32) {
-    const DEBUG: bool = false;
+    const DEBUG: bool = true;
 
     let meas_len = diagnostics[0].chars().count();
     let meas_count = diagnostics.len();
@@ -57,4 +57,24 @@ pub fn binary_diagnostic(diagnostics: Vec<String>) -> (u32, u32) {
     if DEBUG { println!("submarine power consumption is {}", pow_consump); }
 
     (pow_consump, 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::read_input;
+
+    #[test]
+    fn power_consumption() {
+        let input = read_input("../testinputs/03.txt");
+        let (consumption, _) = binary_diagnostic(input);
+        assert_eq!(198, consumption);
+    }
+
+    #[test]
+    fn life_support_rating() {
+        let input = read_input("../testinputs/03.txt");
+        let (_, rating) = binary_diagnostic(input);
+        assert_eq!(230, rating);
+    }
 }

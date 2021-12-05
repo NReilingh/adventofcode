@@ -15,9 +15,7 @@ fn main() {
 }
 
 fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
-    let input = fs::read_to_string(input_file)
-        .expect("Something went wrong reading the input file")
-        .lines().map(String::from).collect();
+    let input = read_input(input_file);
 
     let (first_answer, second_answer) = calculator(input);
 
@@ -26,3 +24,9 @@ fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
              first_answer, second_answer);
 }
 
+fn read_input(input_file: &str) -> Vec<String> {
+    let input = fs::read_to_string(input_file)
+        .expect("Something went wrong reading the input file")
+        .lines().map(String::from).collect();
+    input
+}

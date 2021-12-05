@@ -74,3 +74,23 @@ pub fn sub_position(input: Vec<String>) -> (u32, u32) {
 
     (naive_result, position_result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::read_input;
+
+    #[test]
+    fn naive_position_vector() {
+        let input = read_input("../testinputs/02.txt");
+        let (vector, _) = sub_position(input);
+        assert_eq!(150, vector);
+    }
+
+    #[test]
+    fn correct_position_vector() {
+        let input = read_input("../testinputs/02.txt");
+        let (_, vector) = sub_position(input);
+        assert_eq!(900, vector);
+    }
+}

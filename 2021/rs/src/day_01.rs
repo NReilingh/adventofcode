@@ -40,3 +40,23 @@ pub fn depth_measurements(input_lines: Vec<String>) -> (u32, u32) {
 
     (increases, windowed_increases)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::read_input;
+
+    #[test]
+    fn increase_count() {
+        let input = read_input("../testinputs/01.txt");
+        let (increases, _) = depth_measurements(input);
+        assert_eq!(7, increases);
+    }
+
+    #[test]
+    fn windowed_increase_count() {
+        let input = read_input("../testinputs/01.txt");
+        let (_, increases) = depth_measurements(input);
+        assert_eq!(5, increases);
+    }
+}
