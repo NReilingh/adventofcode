@@ -1,7 +1,7 @@
 // Day three
 
 pub fn binary_diagnostic(mut diagnostics: Vec<String>) -> (u32, u32) {
-    const DEBUG: bool = true;
+    const DEBUG: bool = false;
 
     let meas_len = diagnostics[0].chars().count();
     let meas_count = diagnostics.len();
@@ -95,17 +95,22 @@ pub fn binary_diagnostic(mut diagnostics: Vec<String>) -> (u32, u32) {
         criteria: Frequency::Least,
         tie: b'0',
     });
+
+    if DEBUG { println!("oxygen idx {}, co2 idx {}", oxygen_rating_idx, co2_rating_idx); }
+
     let oxygen_rating = utf8bin_to_u32(&diagnostics[oxygen_rating_idx]);
     let co2_rating = utf8bin_to_u32(&diagnostics[co2_rating_idx]);
 
     (pow_consump, oxygen_rating * co2_rating)
 }
 
-fn transpose<T>(v: &Vec<Vec<T>>) -> Vec<Vec<T>>
+fn transpose<T>(outer: &Vec<Vec<T>>) -> Vec<Vec<T>>
     where T: Copy,
 {
-    (0..v[0].len())
-        .map(|i| v.iter().map(|item| item[i]).collect::<Vec<T>>())
+    (0..outer[0].len())
+        .map(|i| outer.iter()
+            .map(|inner| inner[i])
+            .collect::<Vec<T>>())
         .collect::<Vec<Vec<T>>>()
 }
 
@@ -121,7 +126,59 @@ struct Rule {
 }
 
 fn apply_rule(slice: &[u8], rule: &Rule, bounds: (usize, usize)) -> (usize, usize) {
-    (0,0)
+    let range = bounds.1 - bounds.0;
+
+    // within slice[bounds.0..bounds.1], find the first index of b'1'
+    let index = slice[bounds.0..bounds.1].partition_point(|&x| x != b'1');
+
+    // this result is either:
+    // 0, => Most = 1, Least = 1
+    // n where 2n < range, => Most = 1, Least = 0
+    // n where 2n = range, => Tie
+    // n where 2n > range, => Most = 0, Least = 1
+    // range => Most = 0, Least = 0
+    let choice = match index {
+        0 => b'1',
+        i if i == range => b'0',
+        i if i * 2 == range => rule.tie,
+        i if i * 2 < range => match &rule.criteria {
+            Frequency::Most => b'1',
+            Frequency::Least => b'0',
+        },
+        i if i * 2 > range =>
+            match &rule.criteria {
+                Frequency::Most => b'0',
+                Frequency::Least => b'1',
+            },
+        _ => unreachable!(),
+    };
+    let asdfchoice =
+        if index == 0 {
+            b'1'
+        } else if index == range {
+            b'0'
+        } else if index * 2 < range {
+            match &rule.criteria {
+                Frequency::Most => b'1',
+                Frequency::Least => b'0',
+            }
+        } else if index * 2 > range {
+            match &rule.criteria {
+                Frequency::Most => b'0',
+                Frequency::Least => b'1',
+            }
+        } else if index * 2 == range {
+            rule.tie
+        } else {
+            unreachable!()
+        };
+
+    // This yeilds our digit choice, 1 or 0. So we run a match yielding new bounds:
+    match choice {
+        b'0' => (bounds.0, bounds.0 + index),
+        b'1' => (bounds.0 + index, bounds.1),
+        _ => unreachable!(),
+    }
 }
 
 fn search(places: &Vec<Vec<u8>>, rule: Rule) -> usize {
@@ -130,9 +187,8 @@ fn search(places: &Vec<Vec<u8>>, rule: Rule) -> usize {
         let new_bounds = apply_rule(&place[..], &rule, (start, end));
         start = new_bounds.0;
         end = new_bounds.1;
-        if start == end {
-            return start;
-        }
+
+        if start == end - 1 { return start; }
     }
     start
 }
@@ -167,6 +223,51 @@ mod function_tests {
 }
 
 #[cfg(test)]
+mod apply_rule_tests {
+    use super::*;
+
+    #[test]
+    fn full_vec_tied() {
+        let input: Vec<u8> = vec![b'0', b'0', b'1', b'1'];
+        let new_bounds = apply_rule(&input[..], &Rule {
+            criteria: Frequency::Most,
+            tie: b'1',
+        }, (0, 4));
+        assert_eq!((2, 4), new_bounds);
+    }
+
+    #[test]
+    fn full_vec_all_zero() {
+        let input: Vec<u8> = vec![b'0', b'0', b'0', b'0'];
+        let new_bounds = apply_rule(&input[..], &Rule {
+            criteria: Frequency::Least,
+            tie: b'1',
+        }, (0, 4));
+        assert_eq!((0, 4), new_bounds);
+    }
+
+    #[test]
+    fn partial_midpoint() {
+        let input: Vec<u8> = vec![b'0', b'1', b'0', b'0', b'1', b'0'];
+        let new_bounds = apply_rule(&input[..], &Rule {
+            criteria: Frequency::Most,
+            tie: b'1',
+        }, (2, 5));
+        assert_eq!((2, 4), new_bounds);
+    }
+
+    #[test]
+    fn partial_tied() {
+        let input: Vec<u8> = vec![b'1', b'0', b'1', b'0'];
+        let new_bounds = apply_rule(&input[..], &Rule {
+            criteria: Frequency::Least,
+            tie: b'0',
+        }, (1, 2));
+        assert_eq!((1, 2), new_bounds);
+    }
+}
+
+#[cfg(test)]
 mod answer_tests {
     use super::*;
     use crate::read_input;
@@ -179,7 +280,6 @@ mod answer_tests {
     }
 
     #[test]
-    //#[ignore]
     fn life_support_rating() {
         let input = read_input("../testinputs/03.txt");
         let (_, rating) = binary_diagnostic(input);
