@@ -56,10 +56,6 @@ pub fn binary_diagnostic(mut diagnostics: Vec<String>) -> (u32, u32) {
     let pow_consump = rate.power_consumption();
     if DEBUG { println!("submarine power consumption is {}", pow_consump); }
 
-    // We still own diagnostics and we've retained our first result already.
-    diagnostics.sort_unstable();
-    if DEBUG { println!("Sorted diagnostics {:?}", diagnostics); }
-
     // What we're doing next is...
     // Recursively(?) searching through progressively smaller slices of the vec
     // to find out which single item satisfies the rule.
@@ -69,24 +65,29 @@ pub fn binary_diagnostic(mut diagnostics: Vec<String>) -> (u32, u32) {
     // and I'm not sure if recursive programming is a thing in Rust.
     // I can't use exactly the same logic I used in part one, because
     // some of the filtered slices could have only one of the possible values.
-    // So that means we actually need to aggregate/count them,
-    // and then take the value with either the larger or smaller count
-    // per the criteria (also verifying that the counts were not equal).
     // Since the value doesn't matter in this algorithm,
     // I'm not going to bother parsing the char into a usize/u32;
     // instead we'll just treat everything as a... byte?
     // Actually yeah, lets see if we can do Vec<&[u8]> and then
     // parse the result from UTF-8 once we're done.
+
+    // This algorithm requires sorting the initial array.
+    // We still own diagnostics and we've retained our first result already.
+    diagnostics.sort_unstable();
+    if DEBUG { println!("Sorted diagnostics {:?}", diagnostics); }
+
     let diagnostics: Vec<Vec<u8>> = diagnostics.iter()
         .map(|item| item.clone().into_bytes())
         .collect();
 
     if DEBUG { println!("Diagnostic byte vector {:?}", diagnostics); }
 
+    // Transposing because I want to use byte slices to search each place.
     let search_vector = transpose(&diagnostics);
 
     if DEBUG { println!("Search vector {:?}", search_vector); }
 
+    // Get the index of the rating within the sorted diagnostics Vec.
     let oxygen_rating_idx = search(&search_vector, Rule {
         criteria: Frequency::Most,
         tie: b'1',
@@ -140,40 +141,21 @@ fn apply_rule(slice: &[u8], rule: &Rule, bounds: (usize, usize)) -> (usize, usiz
     let choice = match index {
         0 => b'1',
         i if i == range => b'0',
-        i if i * 2 == range => rule.tie,
-        i if i * 2 < range => match &rule.criteria {
-            Frequency::Most => b'1',
-            Frequency::Least => b'0',
-        },
+        i if i * 2 < range =>
+            match &rule.criteria {
+                Frequency::Most => b'1',
+                Frequency::Least => b'0',
+            },
         i if i * 2 > range =>
             match &rule.criteria {
                 Frequency::Most => b'0',
                 Frequency::Least => b'1',
             },
+        i if i * 2 == range => rule.tie,
         _ => unreachable!(),
     };
-    let asdfchoice =
-        if index == 0 {
-            b'1'
-        } else if index == range {
-            b'0'
-        } else if index * 2 < range {
-            match &rule.criteria {
-                Frequency::Most => b'1',
-                Frequency::Least => b'0',
-            }
-        } else if index * 2 > range {
-            match &rule.criteria {
-                Frequency::Most => b'0',
-                Frequency::Least => b'1',
-            }
-        } else if index * 2 == range {
-            rule.tie
-        } else {
-            unreachable!()
-        };
 
-    // This yeilds our digit choice, 1 or 0. So we run a match yielding new bounds:
+    // This yields our digit choice, 1 or 0. So we run a match yielding new bounds:
     match choice {
         b'0' => (bounds.0, bounds.0 + index),
         b'1' => (bounds.0 + index, bounds.1),
