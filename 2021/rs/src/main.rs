@@ -15,7 +15,7 @@ fn main() {
 }
 
 fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
-    let input = read_input(input_file);
+    let mut input = read_input(input_file);
 
     let (first_answer, second_answer) = calculator(input);
 
