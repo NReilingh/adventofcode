@@ -5,6 +5,7 @@ use std::fs;
 mod day_01;
 mod day_02;
 mod day_03;
+mod day_04;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,6 +13,7 @@ fn main() {
     run_exercise("../inputs/01.txt", day_01::depth_measurements);
     run_exercise("../inputs/02.txt", day_02::sub_position);
     run_exercise("../inputs/03.txt", day_03::binary_diagnostic);
+    run_exercise("../inputs/04.txt", day_04::play_bingo);
 }
 
 fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
