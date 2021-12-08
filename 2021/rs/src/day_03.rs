@@ -105,7 +105,7 @@ pub fn binary_diagnostic(mut diagnostics: Vec<String>) -> (u32, u32) {
     (pow_consump, oxygen_rating * co2_rating)
 }
 
-fn transpose<T>(outer: &Vec<Vec<T>>) -> Vec<Vec<T>>
+fn transpose<T>(outer: &[Vec<T>]) -> Vec<Vec<T>>
     where T: Copy,
 {
     (0..outer[0].len())
@@ -163,7 +163,7 @@ fn apply_rule(slice: &[u8], rule: &Rule, bounds: (usize, usize)) -> (usize, usiz
     }
 }
 
-fn search(places: &Vec<Vec<u8>>, rule: Rule) -> usize {
+fn search(places: &[Vec<u8>], rule: Rule) -> usize {
     let (mut start, mut end) = (0, places[0].len());
     for (i, place) in places.iter().enumerate() {
         let new_bounds = apply_rule(&place[..], &rule, (start, end));
@@ -175,7 +175,7 @@ fn search(places: &Vec<Vec<u8>>, rule: Rule) -> usize {
     start
 }
 
-fn utf8bin_to_u32(input: &Vec<u8>) -> u32 {
+fn utf8bin_to_u32(input: &[u8]) -> u32 {
     u32::from_str_radix(std::str::from_utf8(input).unwrap(), 2).unwrap()
 }
 

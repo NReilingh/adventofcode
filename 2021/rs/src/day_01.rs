@@ -3,10 +3,10 @@
 pub fn depth_measurements(input_lines: Vec<String>) -> (u32, u32) {
     const DEBUG: bool = false;
 
-    let measurements = input_lines.iter()
+    let measurements: Vec<u32> = input_lines.iter()
         .map(|x| x.parse::<u32>().unwrap()).collect();
 
-    fn count_increases(measurements: &Vec<u32>) -> u32 {
+    fn count_increases(measurements: &[u32]) -> u32 {
         let mut last_measurement: Option<u32> = None;
         let mut num_increases: u32 = 0;
 
