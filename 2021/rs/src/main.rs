@@ -23,7 +23,7 @@ fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
 
     println!("Results from {}:", input_file);
     println!("First answer is {}, second answer is {}.",
-             first_answer, second_answer);
+        first_answer, second_answer);
 }
 
 fn read_input(input_file: &str) -> Vec<String> {
