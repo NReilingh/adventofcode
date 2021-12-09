@@ -20,18 +20,21 @@ pub fn play_bingo(input: Vec<String>) -> (u32, u32) {
 
     // Loop through the draws, loop through the boards until a winning draw
     // Then score the winning board
-    let score = 'outer: loop {
-        for draw in &draws {
-            for game in &mut games {
-                if let Some(winner) = game.play(draw) {
-                    break 'outer game.score(winner);
+    let (mut first, mut last) = (0u32, 0u32);
+    for draw in &draws {
+        for game in &mut games.iter_mut().filter(|i| !i.won) {
+            if let Some(winner) = game.play(draw) {
+                if first == 0 {
+                    first = game.score(winner);
                 }
+                last = game.score(winner);
+                // Remove this game from games
+                game.won = true;
             }
         }
-        break 0;
     };
 
-    (score, 0)
+    (first, last)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -44,6 +47,7 @@ use BingoSpace::{Marked, Unmarked};
 struct BingoBoard {
     board: [BingoSpace; 25],
     plays: u32,
+    won: bool,
 }
 
 impl From<&[u32; 25]> for BingoBoard {
@@ -52,7 +56,8 @@ impl From<&[u32; 25]> for BingoBoard {
             board: grid.iter()
                 .map(|item| Unmarked(*item))
                 .collect::<Vec<BingoSpace>>().try_into().unwrap(),
-                plays: 0,
+            plays: 0,
+            won: false,
         }
     }
 }
@@ -63,7 +68,8 @@ impl From<Vec<u32>> for BingoBoard {
             board: grid.iter()
                 .map(|item| Unmarked(*item))
                 .collect::<Vec<BingoSpace>>().try_into().unwrap(),
-                plays: 0,
+            plays: 0,
+            won: false,
         }
     }
 }
@@ -73,6 +79,7 @@ impl From<Vec<BingoSpace>> for BingoBoard {
         BingoBoard {
             board: grid.try_into().unwrap(),
             plays: 0,
+            won: false,
         }
     }
 }
@@ -233,5 +240,12 @@ mod answer_tests {
         let input = read_input("../testinputs/04.txt");
         let (score, _) = play_bingo(input);
         assert_eq!(4512, score);
+    }
+
+    #[test]
+    fn losingest_bingo_board() {
+        let input = read_input("../testinputs/04.txt");
+        let (_, score) = play_bingo(input);
+        assert_eq!(1924, score);
     }
 }
