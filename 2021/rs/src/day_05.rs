@@ -4,7 +4,7 @@ use std::cmp::max;
 pub fn hydrothermal_vents(input: Vec<String>) -> (u32, u32) {
     // Parse input to line segments
     let vents: Vec<LineSegment> = input.iter()
-        .map(|item| item.into())
+        .map(|item| item.parse().unwrap())
         // .map(|item| LineSegment::from(item.as_str()))
         .collect();
 
@@ -78,31 +78,61 @@ impl LineSegment {
         false
     }
 }
+
 use std::str::FromStr;
+use std::error::Error;
 impl FromStr for LineSegment {
+    type Err = Box<dyn Error>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-    }
-}
-
-impl From<&str> for LineSegment {
-    fn from(s: &str) -> Self {
-        let mut results = s
-            .split(&[' ', ',', '-', '>'][..])
+        let mut results = s.split(&[' ', ',', '-', '>'][..])
             .filter(|x| !x.is_empty())
-            .map(|x| x.parse().unwrap());
+            .map(|x| Result::<u32, Self::Err>::Ok(x.parse()?));
 
-        LineSegment(
-            Coordinate::new(
-                results.next().unwrap(),
-                results.next().unwrap()
-            ),
-            Coordinate::new(
-                results.next().unwrap(),
-                results.next().unwrap()
-            )
-        )
+        let first = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
+        let second = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
+        let third = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
+        let fourth = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
+
+        Ok(LineSegment(
+                Coordinate::new(first, second),
+                Coordinate::new(third, fourth)
+        ))
     }
 }
+
+        // println!("wat {:?}", results.next().ok_or_else(|| "Not enough parsed numerics.")??);
+        // let next_result = |results: Map<Filter<Split<&[char]>, |&&str| -> bool>, |&str| -> Result<u32, Box<dyn Error>>>| {
+        //     Ok(results.next().ok_or_else(|| "Not enough parsed values.")??)
+        // };
+     
+        // let next_result = |results: &mut dyn Iterator<Item = Result<u32, Self::Err>>| -> Result<u32, Self::Err> {
+        //     Ok(results.next().ok_or_else(|| "Not enough parsed values.")??)
+        // };
+        //
+        // println!("wat {:?}", next_result(&results));
+
+        // Ok(LineSegment(
+        //         Coordinate::new(0, 0),
+        //         Coordinate::new(0, 0)
+        // ))
+
+        // Ok(LineSegment(
+        //     Coordinate::new(
+        //         results.next().ok_or("boop")??,
+        //         results.next().ok_or("boop")??
+        //     ),
+        //     Coordinate::new(
+        //         results.next().ok_or("boop")??,
+        //         results.next().ok_or("boop")??
+        //     )
+        // ))
+//     }
+// }
+
+// impl From<&str> for LineSegment {
+//     fn from(s: &str) -> Self {
+//     }
+// }
 
 #[cfg(test)]
 mod function_tests {
@@ -123,7 +153,7 @@ mod function_tests {
                 magnitude: 0,
             }
         );
-        assert_eq!(expected, LineSegment::from(input));
+        assert_eq!(expected, LineSegment::from_str(input).unwrap());
     }
 }
 
