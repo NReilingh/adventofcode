@@ -4,7 +4,8 @@ use std::cmp::max;
 pub fn hydrothermal_vents(input: Vec<String>) -> (u32, u32) {
     // Parse input to line segments
     let vents: Vec<LineSegment> = input.iter()
-        .map(|item| LineSegment::from(item.as_str()))
+        .map(|item| item.into())
+        // .map(|item| LineSegment::from(item.as_str()))
         .collect();
 
     // Reduce to max x and y values in grid
@@ -75,6 +76,11 @@ struct LineSegment(Coordinate, Coordinate);
 impl LineSegment {
     fn diagonal(&self) -> bool {
         false
+    }
+}
+use std::str::FromStr;
+impl FromStr for LineSegment {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
     }
 }
 
