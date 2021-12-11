@@ -36,21 +36,26 @@ pub fn hydrothermal_vents(input: Vec<String>) -> (u32, u32) {
 }
 
 struct Grid {
-    matrix: Vec<Coordinate>,
+    matrix: Vec<u32>,
+    width: u32,
 }
 
 impl Grid {
     fn new(x_max: u32, y_max: u32) -> Self {
+        let x_size = x_max + 1;
+        let y_size = y_max + 1;
         Grid {
-            matrix: Vec::new(),
+            matrix: vec![0; (x_size * y_size).try_into().unwrap()],
+            width: x_size,
         }
     }
 
     fn plot(&mut self, segment: &LineSegment) {
+
     }
 
     fn count_overlaps(&self) -> u32 {
-        0
+        self.matrix.iter().filter(|&x| *x > 1).count().try_into().unwrap()
     }
 }
 
@@ -58,16 +63,6 @@ impl Grid {
 struct Coordinate {
     x: u32,
     y: u32,
-    magnitude: u32,
-}
-impl Coordinate {
-    fn new(x: u32, y: u32) -> Self {
-        Coordinate {
-            x,
-            y,
-            magnitude: 0,
-        }
-    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -86,53 +81,20 @@ impl FromStr for LineSegment {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut results = s.split(&[' ', ',', '-', '>'][..])
             .filter(|x| !x.is_empty())
-            .map(|x| Result::<u32, Self::Err>::Ok(x.parse()?));
+            .map(|x| Result::<_, Self::Err>::Ok(x.parse()?));
 
-        let first = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
-        let second = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
-        let third = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
-        let fourth = results.next().ok_or_else(|| "Not enough parsed numerics.")??;
+        let mut next = || {
+            Result::<_, Self::Err>::Ok(
+                results.next().ok_or_else(|| "Not enough parsed numerics.")??
+            )
+        };
 
         Ok(LineSegment(
-                Coordinate::new(first, second),
-                Coordinate::new(third, fourth)
+            Coordinate { x: next()?, y: next()? },
+            Coordinate { x: next()?, y: next()? },
         ))
     }
 }
-
-        // println!("wat {:?}", results.next().ok_or_else(|| "Not enough parsed numerics.")??);
-        // let next_result = |results: Map<Filter<Split<&[char]>, |&&str| -> bool>, |&str| -> Result<u32, Box<dyn Error>>>| {
-        //     Ok(results.next().ok_or_else(|| "Not enough parsed values.")??)
-        // };
-     
-        // let next_result = |results: &mut dyn Iterator<Item = Result<u32, Self::Err>>| -> Result<u32, Self::Err> {
-        //     Ok(results.next().ok_or_else(|| "Not enough parsed values.")??)
-        // };
-        //
-        // println!("wat {:?}", next_result(&results));
-
-        // Ok(LineSegment(
-        //         Coordinate::new(0, 0),
-        //         Coordinate::new(0, 0)
-        // ))
-
-        // Ok(LineSegment(
-        //     Coordinate::new(
-        //         results.next().ok_or("boop")??,
-        //         results.next().ok_or("boop")??
-        //     ),
-        //     Coordinate::new(
-        //         results.next().ok_or("boop")??,
-        //         results.next().ok_or("boop")??
-        //     )
-        // ))
-//     }
-// }
-
-// impl From<&str> for LineSegment {
-//     fn from(s: &str) -> Self {
-//     }
-// }
 
 #[cfg(test)]
 mod function_tests {
@@ -145,15 +107,95 @@ mod function_tests {
             Coordinate {
                 x: 1,
                 y: 2,
-                magnitude: 0,
             },
             Coordinate {
                 x: 3,
                 y: 4,
-                magnitude: 0,
             }
         );
         assert_eq!(expected, LineSegment::from_str(input).unwrap());
+    }
+
+    #[test]
+    fn grid_size() {
+        let mut grid = Grid::new(4, 4);
+        let expected: Vec<u32> = vec![
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        ];
+        assert_eq!(expected, grid.matrix);
+    }
+
+    #[test]
+    fn horizontal_plot() {
+        let mut grid = Grid::new(4, 4);
+        let seg = LineSegment(Coordinate {x: 1, y: 2}, Coordinate {x: 4, y: 2});
+        let expected: Vec<u32> = vec![
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        ];
+        grid.plot(&seg);
+        assert_eq!(expected, grid.matrix);
+    }
+
+    #[test]
+    fn vertical_plot() {
+        let mut grid = Grid::new(4, 4);
+        let seg = LineSegment(Coordinate {x: 1, y: 3}, Coordinate {x: 1, y: 0});
+        let expected: Vec<u32> = vec![
+            0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        ];
+        grid.plot(&seg);
+        assert_eq!(expected, grid.matrix);
+    }
+
+    #[test]
+    fn up_diag_plog() {
+        let mut grid = Grid::new(4, 4);
+        let seg = LineSegment(Coordinate {x: 2, y: 1}, Coordinate {x: 0, y: 3});
+        let expected: Vec<u32> = vec![
+            0, 0, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, 1, 0, 0, 0,
+            1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        ];
+        grid.plot(&seg);
+        assert_eq!(expected, grid.matrix);
+    }
+
+    #[test]
+    fn down_diag_plot() {
+        let mut grid = Grid::new(4, 4);
+        let seg = LineSegment(Coordinate {x: 0, y: 0}, Coordinate {x: 4, y: 4});
+        let expected: Vec<u32> = vec![
+            1, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, 0, 0, 1, 0,
+            0, 0, 0, 0, 1,
+        ];
+        grid.plot(&seg);
+        assert_eq!(expected, grid.matrix);
+    }
+
+    #[test]
+    fn overlap_counting() {
+        let grid = Grid {
+            matrix: vec![0, 1, 1, 2, 1, 3, 3, 2, 1, 0, 4],
+            width: 11,
+        };
+        assert_eq!(5, grid.count_overlaps());
     }
 }
 
@@ -163,7 +205,7 @@ mod answer_tests {
     use crate::read_input;
 
     #[test]
-    fn overlapping_points() {
+    fn overlapping_isolinears() {
         let input = read_input("../testinputs/05.txt");
         let (points, _) = hydrothermal_vents(input);
         assert_eq!(5, points);
