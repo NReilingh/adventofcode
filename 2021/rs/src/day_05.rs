@@ -50,8 +50,23 @@ impl Grid {
         }
     }
 
-    fn plot(&mut self, segment: &LineSegment) {
+    fn plot(&mut self, seg: &LineSegment) {
+        let xdiff = i32::abs((seg.0.x - seg.1.x).try_into().unwrap());
+        let ydiff = i32::abs((seg.0.y - seg.1.y).try_into().unwrap());
 
+        let steps = max(xdiff, ydiff);
+
+        let idx0 = seg.0.x + seg.0.y * self.width;
+        let idx1 = seg.1.x + seg.1.y * self.width;
+
+        let step_size = (idx1 - idx0) / steps;
+        // This is a little bit confusing. If steps == 1,
+        // then just incremend idx0 and idx1.
+        // If steps > 1, take (idx1 - idx0) / steps
+        // and increment idx1 by that amount steps times.
+        // There's probably a range by steps or something?
+        // Then I can iter_mut over the matrix and filter
+        // to the values to increment.
     }
 
     fn count_overlaps(&self) -> u32 {
