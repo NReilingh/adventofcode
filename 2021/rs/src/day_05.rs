@@ -1,5 +1,6 @@
 // Day 5
-use std::cmp::max;
+use std::cmp::{min, max};
+use std::fmt;
 
 pub fn hydrothermal_vents(input: Vec<String>) -> (u32, u32) {
     // Parse input to line segments
@@ -21,17 +22,22 @@ pub fn hydrothermal_vents(input: Vec<String>) -> (u32, u32) {
     let mut grid = Grid::new(x_max, y_max);
 
     // Plot each isolinear(?) line segment on the grid
-    for vent in vents.iter().filter(|s| !s.diagonal()) {
+    for vent in vents.iter().filter(|s| !s.is_diagonal()) {
         grid.plot(&vent);
     }
+
+    // println!("Isolinear grid looks like this {:?}", grid);
 
     // Count overlaps
     let overlaps = grid.count_overlaps();
 
     // Additively plot diagonal line segments on the grid
-    for vent in vents.iter().filter(|s| s.diagonal()) {
+    for vent in vents.iter().filter(|s| s.is_diagonal()) {
         grid.plot(&vent);
     }
+
+    // println!("Full grid looks like this {:?}", grid);
+
     (overlaps, grid.count_overlaps())
 }
 
@@ -51,26 +57,52 @@ impl Grid {
     }
 
     fn plot(&mut self, seg: &LineSegment) {
-        let xdiff = i32::abs((seg.0.x - seg.1.x).try_into().unwrap());
-        let ydiff = i32::abs((seg.0.y - seg.1.y).try_into().unwrap());
+        // We need i32s to do math
+        let x0: i32 = seg.0.x.try_into().unwrap();
+        let y0: i32 = seg.0.y.try_into().unwrap();
+        let x1: i32 = seg.1.x.try_into().unwrap();
+        let y1: i32 = seg.1.y.try_into().unwrap();
+        let width: i32 = self.width.try_into().unwrap();
+
+        let xdiff = i32::abs(x0 - x1);
+        let ydiff = i32::abs(y0 - y1);
 
         let steps = max(xdiff, ydiff);
 
-        let idx0 = seg.0.x + seg.0.y * self.width;
-        let idx1 = seg.1.x + seg.1.y * self.width;
+        let idx0 = x0 + y0 * width;
+        let idx1 = x1 + y1 * width;
+        let idxmin = min(idx0, idx1);
+        let idxmax = max(idx0, idx1);
 
-        let step_size = (idx1 - idx0) / steps;
+        let step_size: usize = ((idxmax - idxmin) / steps).try_into().unwrap();
         // This is a little bit confusing. If steps == 1,
         // then just incremend idx0 and idx1.
         // If steps > 1, take (idx1 - idx0) / steps
         // and increment idx1 by that amount steps times.
         // There's probably a range by steps or something?
-        // Then I can iter_mut over the matrix and filter
-        // to the values to increment.
+        // Then I can iter over the range and increment
+        // the matrix values directly.
+        for i in (idxmin..=idxmax).step_by(step_size) {
+            let i: usize = i.try_into().unwrap();
+            self.matrix[i] += 1;
+        }
     }
 
     fn count_overlaps(&self) -> u32 {
         self.matrix.iter().filter(|&x| *x > 1).count().try_into().unwrap()
+    }
+}
+
+impl fmt::Debug for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let width: usize = self.width.try_into().unwrap();
+        for row in (0..(self.matrix.len() / width)) {
+            let start_idx = row * width;
+            let end_idx = (row + 1) * width;
+            f.write_str("\n");
+            f.write_fmt(format_args!("{:?}", &self.matrix[start_idx..end_idx]));
+        }
+        Ok(())
     }
 }
 
@@ -84,8 +116,12 @@ struct Coordinate {
 struct LineSegment(Coordinate, Coordinate);
 
 impl LineSegment {
-    fn diagonal(&self) -> bool {
-        false
+    fn is_diagonal(&self) -> bool {
+        if self.0.x == self.1.x || self.0.y == self.1.y {
+            false
+        } else {
+            true
+        }
     }
 }
 
@@ -114,6 +150,18 @@ impl FromStr for LineSegment {
 #[cfg(test)]
 mod function_tests {
     use super::*;
+
+    #[test]
+    fn segment_is_diagonal() {
+        let input = LineSegment::from_str("1,0 -> 2,1").unwrap();
+        assert!(input.is_diagonal());
+    }
+
+    #[test]
+    fn segment_is_horizontal() {
+        let input = LineSegment::from_str("2,3 -> 2,5").unwrap();
+        assert!(!input.is_diagonal());
+    }
 
     #[test]
     fn line_segment_from_string() {
@@ -224,5 +272,12 @@ mod answer_tests {
         let input = read_input("../testinputs/05.txt");
         let (points, _) = hydrothermal_vents(input);
         assert_eq!(5, points);
+    }
+    
+    #[test]
+    fn all_overlapping() {
+        let input = read_input("../testinputs/05.txt");
+        let (_, points) = hydrothermal_vents(input);
+        assert_eq!(12, points);
     }
 }
