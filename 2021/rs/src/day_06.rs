@@ -1,10 +1,14 @@
-pub fn lanternfish(input: Vec<String>) -> (u64, u64) {
+// Day 6
+
+use crate::Answer;
+
+pub fn lanternfish(input: Vec<String>) -> Answer {
     let mut school: School = School::from_str(&input[0]).unwrap();
     school.time_travel(80);
     let first_count = school.census().try_into().unwrap();
     school.time_travel(256-80);
     let second_count = school.census().try_into().unwrap();
-    (first_count, second_count)
+    Answer::U64(first_count, second_count)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -104,14 +108,16 @@ mod answer_tests {
     #[test]
     fn simulate_fish() {
         let input = read_input("../testinputs/06.txt");
-        let (fish, _) = lanternfish(input);
-        assert_eq!(5934, fish);
+        if let Answer::U64(fish, _) = lanternfish(input) {
+            assert_eq!(5934, fish);
+        } else { panic!("Answer was not a U64 variant.") }
     }
 
     #[test]
     fn simulate_fish_harder() {
         let input = read_input("../testinputs/06.txt");
-        let (_, more_fish) = lanternfish(input);
-        assert_eq!(26984457539, more_fish);
+        if let Answer::U64(_, more_fish) = lanternfish(input) {
+            assert_eq!(26984457539, more_fish);
+        } else { panic!("Answer was not a U64 variant.") }
     }
 }

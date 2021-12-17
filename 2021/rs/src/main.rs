@@ -8,16 +8,23 @@ mod day_03;
 mod day_04;
 mod day_05;
 mod day_06;
+mod day_07;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    run_exercise("../inputs/01.txt", day_01::depth_measurements);
+    calculate_answer("../inputs/01.txt", day_01::depth_measurements);
     run_exercise("../inputs/02.txt", day_02::sub_position);
     run_exercise("../inputs/03.txt", day_03::binary_diagnostic);
     run_exercise("../inputs/04.txt", day_04::play_bingo);
     run_exercise("../inputs/05.txt", day_05::hydrothermal_vents);
-    run_big_exercise("../inputs/06.txt", day_06::lanternfish);
+    calculate_answer("../inputs/06.txt", day_06::lanternfish);
+    calculate_answer("../inputs/07.txt", day_07::crab_target_alignment);
+}
+
+pub enum Answer {
+    U32(u32, u32),
+    U64(u64, u64),
 }
 
 fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
@@ -30,10 +37,15 @@ fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
         first_answer, second_answer);
 }
 
-fn run_big_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u64, u64)) {
+fn calculate_answer(input_file: &str, calculator: fn(Vec<String>) -> Answer) {
     let mut input = read_input(input_file);
 
-    let (first_answer, second_answer) = calculator(input);
+    let answers = calculator(input);
+
+    let (first_answer, second_answer) = match answers {
+        Answer::U32(first, second) => (first.into(), second.into()),
+        Answer::U64(first, second) => (first, second),
+    };
 
     println!("Results from {}:", input_file);
     println!("First answer is {}, second answer is {}.",
