@@ -25,6 +25,7 @@ fn main() {
 pub enum Answer {
     U32(u32, u32),
     U64(u64, u64),
+    I64(i64, i64),
 }
 
 fn run_exercise(input_file: &str, calculator: fn(Vec<String>) -> (u32, u32)) {
@@ -44,6 +45,7 @@ fn calculate_answer(input_file: &str, calculator: fn(Vec<String>) -> Answer) {
 
     let (first_answer, second_answer) = match answers {
         Answer::U32(first, second) => (first.into(), second.into()),
+        Answer::I64(first, second) => (first.try_into().unwrap(), second.try_into().unwrap()),
         Answer::U64(first, second) => (first, second),
     };
 
