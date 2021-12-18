@@ -23,24 +23,35 @@ pub fn crab_target_alignment(input: Vec<String>) -> Answer {
         .map(|x| x.parse().unwrap()).collect();
 
     let mut optimizer = ListValueOptimizer::new(crab_positions);
+    println!("Initial optimizer state: {:#?}", optimizer);
 
-    let optimal_position = optimizer.min_fuel_position().try_into().unwrap();
+    let optimal_cost = optimizer.min_fuel_position().target_cost.try_into().unwrap();
 
-    Answer::U32(optimal_position, 0)
+    Answer::U32(optimal_cost, 0)
 }
 
+#[derive(Debug)]
 struct BoundCost {
     bound: usize,
     bound_target: i64,
     target_cost: i64,
 }
 
+// bottom_bound: usize, // index below which we have already calculated cost to target
+// bottom_target: i64, // target for memoed cost. Cost above this target is bound_size * n
+// bottom_cost: i64, // cost for the bound indexes to hit target
+// top_bound: usize, // index and above which we have already calculated cost to target 
+// top_target: i64, // target for memoed cost. Cost below this target is bound_size * n
+// top_cost: i64, // cost for bound indexes to hit target
+
+#[derive(Debug)]
 struct ListValueOptimizer {
     list: Vec<i64>,
     bottom: BoundCost,
     top: BoundCost,
 }
 
+#[derive(Debug)]
 struct Target(usize, Option<i64>);
 
 impl ListValueOptimizer {
@@ -51,16 +62,22 @@ impl ListValueOptimizer {
     fn new(mut list: Vec<i64>) -> Self {
         list.sort_unstable();
 
+        // With the vec sorted, we split it in half and calculate
+        // the cost of each half to reach the upper or lower bound.
+        // When we split in half we actually have to choose a target
+        // between the two bounds. This should actually be proportional
+        // to the positions we are splitting at.
+
         ListValueOptimizer {
             bottom: BoundCost {
                 bound: 0,
                 bound_target: *list.first().unwrap(),
-                target_cost: i64::MAX,
+                target_cost: 0,
             },
             top: BoundCost {
                 bound: list.len(),
                 bound_target: *list.last().unwrap(),
-                target_cost: i64::MAX,
+                target_cost: 0,
             },
             list,
         }
@@ -70,11 +87,11 @@ impl ListValueOptimizer {
         if self.top.bound == self.bottom.bound + 1 {
             // Refactor this to use match guards perhaps?
             let target = if self.top.bound * 2 < self.list_size() {
-                self.bottom.bound_target
+                self.top.bound_target
             } else if self.top.bound * 2 == self.list_size() {
                 midpoint(self.bottom.bound_target, self.top.bound_target)
             } else if self.top.bound * 2 > self.list_size() {
-                self.top.bound_target
+                self.bottom.bound_target
             } else {
                 unreachable!()
             };
@@ -86,135 +103,76 @@ impl ListValueOptimizer {
         }
     }
 
-    fn min_fuel_position(&mut self) -> i64 {
-        // let pivot = state.top.bound;
-        //
-        // let bottom_bound_val = set[pivot - 1];
-        // let top_bound_val = set[pivot];
+    fn pivot_cost(&self, pivot: usize) -> (BoundCost, BoundCost) {
+        // Start by ensuring the pivot is between our existing bounds.
+        assert!(pivot < self.top.bound && pivot > self.bottom.bound);
 
+        // How do we efficiently calculate our costs at this pivot point?
+        // Starting with below the pivot, use cost_to_target() to calculate
+        // the slice from the bound to the pivot, then add the bound target_cost
+        // plus the bound size times target minus bound_target.
+        // So, first we need to know what our target is.
+        let bottom_delta = &self.list[self.bottom.bound..pivot];
+        let top_delta = &self.list[pivot..self.top.bound];
+        let bottom_target = *bottom_delta.last().unwrap();
+        let top_target = *top_delta.first().unwrap();
+        let bottom_delta_cost = cost_to_target(bottom_target, bottom_delta);
+        let top_delta_cost = cost_to_target(top_target, top_delta);
+
+        let bottom_bound_size: i64 = self.bottom.bound.try_into().unwrap();
+        let bottom_bound_delta = (bottom_target - self.bottom.bound_target) * bottom_bound_size;
+
+        let top_bound_size: i64 = (self.list_size() - self.top.bound).try_into().unwrap();
+        let top_bound_delta = (self.top.bound_target - top_target) * top_bound_size;
+
+        let bottom_total_cost = self.bottom.target_cost + bottom_bound_delta + bottom_delta_cost;
+        let top_total_cost = self.top.target_cost + top_bound_delta + top_delta_cost;
+
+        (
+            BoundCost {
+                bound: pivot,
+                bound_target: bottom_target,
+                target_cost: bottom_total_cost,
+            },
+            BoundCost {
+                bound: pivot,
+                bound_target: top_target,
+                target_cost: top_total_cost,
+            }
+        )
+    }
+
+    fn min_fuel_position(&mut self) -> BoundCost {
         let target = self.get_next_target();
+
+        println!("Target acquired: {:?}", target);
 
         match target {
             Target(pivot, None) => {
-                let bottom = &self.list[..pivot];
-                let top = &self.list[pivot..];
-                let bottom_cost = cost_to_target(*bottom.last().unwrap(), bottom);
-                let top_cost = cost_to_target(*top.first().unwrap(), top);
+                // Calculate the total cost for above and below the pivot to reach
+                // their respective bound targets.
+                let (bottom_bound, top_bound) = self.pivot_cost(pivot);
+                println!("Calculated bottom: {:#?}, top: {:#?}", bottom_bound, top_bound);
+
+                if bottom_bound.target_cost > top_bound.target_cost {
+                    // move top bound to pivot
+                    self.top = top_bound;
+                } else {
+                    // move bottom bound to pivot
+                    self.bottom = bottom_bound;
+                }
+                // Recurse
+                return self.min_fuel_position();
             },
-            Target(pivot, Some(target)) => {}
-        }
-
-        let split_pos = self.list.len() / 2;
-        let bottom = &self.list[..split_pos];
-        let top = &self.list[split_pos..];
-
-        let bottom_min = bottom.iter().min().unwrap();
-        let bottom_max = bottom.iter().max().unwrap();
-        let top_min = top.iter().min().unwrap();
-        let top_max = top.iter().max().unwrap();
-        let target = bottom_max + (top_min - bottom_max) / 2;
-
-        let bottom_cost = cost_to_target(target, bottom);
-        let top_cost = cost_to_target(target, top);
-
-        if bottom_cost > top_cost {
-            // split bottom
-        } else {
-            // split top
-        }
-        0
-    }
-}
-
-fn min_fuel_position(mut positions: Vec<i64>) -> i64 {
-    struct DivideAndConquerState {
-        bottom: BoundCost,
-        top: BoundCost,
-        // bottom_bound: usize, // index below which we have already calculated cost to target
-        // bottom_target: i64, // target for memoed cost. Cost above this target is bound_size * n
-        // bottom_cost: i64, // cost for the bound indexes to hit target
-        // top_bound: usize, // index and above which we have already calculated cost to target 
-        // top_target: i64, // target for memoed cost. Cost below this target is bound_size * n
-        // top_cost: i64, // cost for bound indexes to hit target
-    }
-
-    positions.sort_unstable();
-
-    // With the vec sorted, we split it in half and calculate
-    // the cost of each half to reach the upper or lower bound.
-    // When we split in half we actually have to choose a target
-    // between the two bounds. This should actually be proportional
-    // to the positions we are splitting at.
-
-    let mut state = DivideAndConquerState {
-        bottom: BoundCost {
-            bound: 0,
-            bound_target: *positions.first().unwrap(),
-            target_cost: i64::MAX,
-        },
-        top: BoundCost {
-            bound: positions.len(),
-            bound_target: *positions.last().unwrap(),
-            target_cost: i64::MAX,
-        },
-    };
-    struct Target(usize, Option<i64>);
-
-    fn get_next_target(state: &DivideAndConquerState, positions: &[i64]) -> Target {
-        if state.bottom.bound + 1 == state.top.bound {
-            let target = if state.top.bound * 2 < positions.len() {
-               state.bottom.bound_target
-            } else if state.top.bound * 2 == positions.len() {
-                midpoint(state.bottom.bound_target, state.top.bound_target)
-            } else if state.top.bound * 2 > positions.len() {
-               state.top.bound_target
-            } else {
-                unreachable!()
-            };
-            let target = midpoint(state.bottom.bound_target, state.top.bound_target);
-            Target(state.top.bound, Some(target))
-        } else {
-            let pivot = midpoint(state.bottom.bound, state.top.bound);
-            Target(pivot, None)
+            Target(pivot, Some(target)) => {
+                return BoundCost {
+                    bound: pivot,
+                    bound_target: target,
+                    target_cost: cost_to_target(target, &self.list),
+                };
+            }
         }
     }
-
-    // let pivot = state.top.bound;
-    //
-    // let bottom_bound_val = set[pivot - 1];
-    // let top_bound_val = set[pivot];
-
-    let target = get_next_target(&state, &positions);
-
-    match target {
-        Target(pivot, None) => {
-            let bottom = &positions[..pivot];
-            let top = &positions[pivot..];
-            let bottom_cost = cost_to_target(*bottom.last().unwrap(), bottom);
-            let top_cost = cost_to_target(*top.first().unwrap(), top);
-        },
-        Target(pivot, Some(target)) => {}
-    }
-
-    let split_pos = positions.len() / 2;
-    let bottom = &positions[..split_pos];
-    let top = &positions[split_pos..];
-
-    let bottom_min = bottom.iter().min().unwrap();
-    let bottom_max = bottom.iter().max().unwrap();
-    let top_min = top.iter().min().unwrap();
-    let top_max = top.iter().max().unwrap();
-    let target = bottom_max + (top_min - bottom_max) / 2;
-
-    let bottom_cost = cost_to_target(target, bottom);
-    let top_cost = cost_to_target(target, top);
-
-    if bottom_cost > top_cost {
-        // split bottom
-    } else {
-        // split top
-    }
-    0
 }
 
 use std::ops::{Sub, Div, Add};
