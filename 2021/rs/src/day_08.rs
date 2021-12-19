@@ -7,7 +7,6 @@ pub fn seven_seg_decode(input: Vec<String>) -> Answer {
     let mut displays: Vec<Display> = input.iter()
         .map(|s| Display::from_str(s).unwrap()).collect();
 
-    // println!("displays are {:#?}", displays);
     let simple_outputs = displays.iter()
         .map(|d| {
             d.values.iter()
@@ -30,19 +29,102 @@ pub fn seven_seg_decode(input: Vec<String>) -> Answer {
     Answer::U32(simple_outputs, full_monty)
 }
 
+use std::collections::BTreeMap;
+
 #[derive(Debug)]
 struct Display {
     patterns: [Pattern; 10],
     values: [Pattern; 4],
-    codes: Vec<u8>,
+    index: BTreeMap<u8, u8>,
 }
 
 impl Display {
+    fn new(patterns: [Pattern; 10], values: [Pattern; 4]) -> Self {
+        Display {
+            patterns,
+            values,
+            index: BTreeMap::new(),
+        }
+    }
+
+    fn insert(&mut self, pattern: u8, value: u8) {
+        self.index.insert(pattern, value);
+    }
+
+    fn get_value(&self, pattern: u8) -> u8 {
+        *self.index.get(&pattern).unwrap()
+    }
+
     fn decode_patterns(&mut self) {
+        let one = self.patterns.into_iter()
+            .find(|p| p.cardinality() == 2).unwrap();
+        self.insert(one.bits(), 1);
+
+        let seven = self.patterns.into_iter()
+            .find(|p| p.cardinality() == 3).unwrap();
+        self.insert(seven.bits(), 7);
+
+        let four = self.patterns.into_iter()
+            .find(|p| p.cardinality() == 4).unwrap();
+        self.insert(four.bits(), 4);
+
+        let eight = self.patterns.into_iter()
+            .find(|p| p.cardinality() == 7).unwrap();
+        self.insert(eight.bits(), 8);
+
+        let three = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 5
+                    && p.bits() == p.bits() | one.bits()
+            }).unwrap();
+        self.insert(three.bits(), 3);
+
+        let nine = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 6
+                    && p.bits() == p.bits() | four.bits()
+            }).unwrap();
+        self.insert(nine.bits(), 9);
+
+        let zero = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 6
+                    && p.bits() != nine.bits()
+                    && p.bits() == p.bits() | one.bits()
+            }).unwrap();
+        self.insert(zero.bits(), 0);
+
+        let six = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 6
+                    && p.bits() != nine.bits()
+                    && p.bits() != zero.bits()
+            }).unwrap();
+        self.insert(six.bits(), 6);
+
+        let two = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 5
+                    && Pattern::new(p.bits() | nine.bits()).cardinality() == 7
+            }).unwrap();
+        self.insert(two.bits(), 2);
+
+        let five = self.patterns.into_iter()
+            .find(|p| {
+                p.cardinality() == 5 
+                    && p.bits() != two.bits()
+                    && p.bits() != three.bits()
+            }).unwrap();
+        self.insert(five.bits(), 5);
     }
 
     fn print_value(&self) -> u32 {
-        0
+        self.values.into_iter().enumerate()
+            .fold(0, |acc, (i, p)| {
+                let value = self.get_value(p.bits()) as u32;
+                let i: u32 = i.try_into().unwrap();
+                acc + 10u32.pow(3 - i) * value
+            })
     }
 }
 
@@ -50,6 +132,16 @@ impl Display {
 struct Pattern([bool; 7]);
 
 impl Pattern {
+    fn new(bits: u8) -> Self {
+        let mut pat = Pattern([false; 7]);
+        pat.0.iter_mut().enumerate().for_each(|(i, d)| {
+            if (bits >> i) % 2 == 1 {
+                *d = true;
+            }
+        });
+        pat
+    }
+
     fn cardinality(&self) -> u8 {
         self.0.iter().filter(|s| **s).count().try_into().unwrap()
     }
@@ -97,11 +189,10 @@ impl FromStr for Display {
             })
             .collect::<Vec<Pattern>>();
 
-        Ok(Display {
-            patterns: patterns[..10].try_into().unwrap(),
-            values: patterns[10..].try_into().unwrap(),
-            codes: Vec::new(),
-        })
+        Ok(Display::new(
+                patterns[..10].try_into().unwrap(),
+                patterns[10..].try_into().unwrap()
+        ))
     }
 }
 
