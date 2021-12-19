@@ -9,6 +9,7 @@ mod day_04;
 mod day_05;
 mod day_06;
 mod day_07;
+mod day_08;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,6 +21,7 @@ fn main() {
     run_exercise("../inputs/05.txt", day_05::hydrothermal_vents);
     calculate_answer("../inputs/06.txt", day_06::lanternfish);
     calculate_answer("../inputs/07.txt", day_07::crab_target_alignment);
+    calculate_answer("../inputs/08.txt", day_08::seven_seg_decode);
 }
 
 pub enum Answer {
